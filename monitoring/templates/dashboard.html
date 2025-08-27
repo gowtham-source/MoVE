@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoVE Performance Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            color: #7f8c8d;
+            font-size: 1rem;
+            margin-top: 0.25rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.warning {
+            background: #f39c12;
+        }
+
+        .status-indicator.error {
+            background: #e74c3c;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0.5rem 0;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            color: #34495e;
+            min-width: 120px;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 0.5rem;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #e74c3c;
+        }
+
+        .success-message {
+            background: #efe;
+            color: #363;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 4px solid #27ae60;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .control-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .control-group label {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MoVE Performance Dashboard</h1>
+        <div class="subtitle">Real-time monitoring and analytics</div>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <h3>Dashboard Controls</h3>
+            <div class="control-group">
+                <label for="timeRange">Time Range:</label>
+                <select id="timeRange">
+                    <option value="1">Last 1 Hour</option>
+                    <option value="6">Last 6 Hours</option>
+                    <option value="24" selected>Last 24 Hours</option>
+                    <option value="168">Last Week</option>
+                </select>
+                
+                <label for="refreshInterval">Refresh Interval:</label>
+                <select id="refreshInterval">
+                    <option value="5">5 seconds</option>
+                    <option value="10" selected>10 seconds</option>
+                    <option value="30">30 seconds</option>
+                    <option value="60">1 minute</option>
+                </select>
+                
+                <button class="btn" onclick="refreshData()">Refresh Now</button>
+                <button class="btn" onclick="toggleAutoRefresh()" id="autoRefreshBtn">Pause Auto-Refresh</button>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <!-- System Metrics -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">System Status</div>
+                    <div class="status-indicator" id="systemStatus"></div>
+                </div>
+                <div id="systemMetrics">
+                    <div class="metric-label">CPU Usage</div>
+                    <div class="metric-value" id="cpuUsage">--</div>
+                    <div class="metric-label">Memory Usage</div>
+                    <div class="metric-value" id="memoryUsage">--</div>
+                    <div class="metric-label">GPU Usage</div>
+                    <div class="metric-value" id="gpuUsage">--</div>
+                </div>
+            </div>
+
+            <!-- Training Status -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Training Status</div>
+                    <div class="status-indicator" id="trainingStatus"></div>
+                </div>
+                <div id="trainingMetrics">
+                    <div class="metric-label">Current Loss</div>
+                    <div class="metric-value" id="currentLoss">--</div>
+                    <div class="metric-label">Learning Rate</div>
+                    <div class="metric-value" id="learningRate">--</div>
+                    <div class="metric-label">Perplexity</div>
+                    <div class="metric-value" id="perplexity">--</div>
+                </div>
+            </div>
+
+            <!-- GPU Metrics -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">GPU Metrics</div>
+                    <div class="status-indicator" id="gpuStatus"></div>
+                </div>
+                <div id="gpuMetrics">
+                    <div class="metric-label">GPU Memory</div>
+                    <div class="metric-value" id="gpuMemory">--</div>
+                    <div class="metric-label">Temperature</div>
+                    <div class="metric-value" id="gpuTemp">--</div>
+                    <div class="metric-label">Power Draw</div>
+                    <div class="metric-value" id="gpuPower">--</div>
+                </div>
+            </div>
+
+            <!-- Performance Summary -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Performance Summary</div>
+                    <div class="status-indicator" id="performanceStatus"></div>
+                </div>
+                <div id="performanceMetrics">
+                    <div class="metric-label">Tokens/Second</div>
+                    <div class="metric-value" id="tokensPerSecond">--</div>
+                    <div class="metric-label">Training Steps</div>
+                    <div class="metric-value" id="trainingSteps">--</div>
+                    <div class="metric-label">Uptime</div>
+                    <div class="metric-value" id="uptime">--</div>
+                </div>
+            </div>
+
+            <!-- System Resource Chart -->
+            <div class="card full-width">
+                <div class="card-header">
+                    <div class="card-title">System Resources Over Time</div>
+                </div>
+                <div class="chart-container" id="systemChart"></div>
+            </div>
+
+            <!-- Training Progress Chart -->
+            <div class="card full-width">
+                <div class="card-header">
+                    <div class="card-title">Training Progress</div>
+                </div>
+                <div class="chart-container" id="trainingChart"></div>
+            </div>
+
+            <!-- Model Benchmarks Chart -->
+            <div class="card full-width">
+                <div class="card-header">
+                    <div class="card-title">Model Benchmark Results</div>
+                </div>
+                <div class="chart-container" id="benchmarkChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefresh = true;
+        let refreshTimer;
+        let startTime = Date.now();
+
+        // Initialize dashboard
+        $(document).ready(function() {
+            refreshData();
+            startAutoRefresh();
+        });
+
+        function refreshData() {
+            const timeRange = $('#timeRange').val();
+            
+            // Show loading indicators
+            $('.metric-value').html('<div class="loading"></div>');
+            
+            // Fetch system metrics
+            $.get(`/api/system_metrics?hours=${timeRange}`)
+                .done(function(data) {
+                    updateSystemMetrics(data);
+                    updateSystemChart(data);
+                })
+                .fail(function() {
+                    showError('Failed to fetch system metrics');
+                });
+            
+            // Fetch training metrics
+            $.get(`/api/training_metrics?hours=${timeRange}`)
+                .done(function(data) {
+                    updateTrainingMetrics(data);
+                    updateTrainingChart(data);
+                })
+                .fail(function() {
+                    showError('Failed to fetch training metrics');
+                });
+            
+            // Fetch model metrics
+            $.get(`/api/model_metrics?hours=${timeRange * 7}`)
+                .done(function(data) {
+                    updateBenchmarkChart(data);
+                })
+                .fail(function() {
+                    showError('Failed to fetch model metrics');
+                });
+        }
+
+        function updateSystemMetrics(data) {
+            if (data.length === 0) {
+                $('#cpuUsage').text('No Data');
+                $('#memoryUsage').text('No Data');
+                $('#gpuUsage').text('No Data');
+                $('#gpuMemory').text('No Data');
+                $('#gpuTemp').text('No Data');
+                $('#gpuPower').text('No Data');
+                return;
+            }
+
+            const latest = data[0];
+            
+            $('#cpuUsage').text(latest.cpu_percent.toFixed(1) + '%');
+            $('#memoryUsage').text(latest.memory_percent.toFixed(1) + '%');
+            
+            if (latest.gpu_utilization !== null) {
+                $('#gpuUsage').text(latest.gpu_utilization.toFixed(1) + '%');
+                $('#gpuMemory').text((latest.gpu_memory_used_gb || 0).toFixed(1) + ' GB');
+                $('#gpuTemp').text((latest.gpu_temperature || 0).toFixed(0) + '°C');
+                $('#gpuPower').text((latest.gpu_power_draw || 0).toFixed(0) + 'W');
+                
+                updateStatusIndicator('gpuStatus', latest.gpu_utilization);
+            } else {
+                $('#gpuUsage').text('N/A');
+                $('#gpuMemory').text('N/A');
+                $('#gpuTemp').text('N/A');
+                $('#gpuPower').text('N/A');
+            }
+            
+            updateStatusIndicator('systemStatus', Math.max(latest.cpu_percent, latest.memory_percent));
+        }
+
+        function updateTrainingMetrics(data) {
+            if (data.length === 0) {
+                $('#currentLoss').text('No Data');
+                $('#learningRate').text('No Data');
+                $('#perplexity').text('No Data');
+                $('#tokensPerSecond').text('No Data');
+                $('#trainingSteps').text('No Data');
+                return;
+            }
+
+            const trainData = data.filter(d => d.step >= 0);
+            if (trainData.length === 0) {
+                $('#currentLoss').text('No Training Data');
+                return;
+            }
+
+            const latest = trainData[0];
+            
+            $('#currentLoss').text(latest.loss.toFixed(4));
+            $('#learningRate').text(latest.learning_rate.toExponential(2));
+            $('#perplexity').text(latest.perplexity ? latest.perplexity.toFixed(2) : 'N/A');
+            $('#tokensPerSecond').text(latest.tokens_per_second ? latest.tokens_per_second.toFixed(0) : 'N/A');
+            $('#trainingSteps').text(latest.step);
+            
+            updateStatusIndicator('trainingStatus', latest.loss < 5 ? 30 : latest.loss < 10 ? 60 : 90);
+        }
+
+        function updateStatusIndicator(elementId, value) {
+            const indicator = $('#' + elementId);
+            indicator.removeClass('warning error');
+            
+            if (value > 80) {
+                indicator.addClass('error');
+            } else if (value > 60) {
+                indicator.addClass('warning');
+            }
+        }
+
+        function updateSystemChart(data) {
+            if (data.length === 0) return;
+            
+            const timestamps = data.map(d => new Date(d.timestamp * 1000)).reverse();
+            const cpuData = data.map(d => d.cpu_percent).reverse();
+            const memoryData = data.map(d => d.memory_percent).reverse();
+            const gpuData = data.filter(d => d.gpu_utilization !== null).map(d => d.gpu_utilization).reverse();
+            const gpuTimestamps = data.filter(d => d.gpu_utilization !== null).map(d => new Date(d.timestamp * 1000)).reverse();
+            
+            const traces = [
+                {
+                    x: timestamps,
+                    y: cpuData,
+                    name: 'CPU Usage (%)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3498db', width: 2 }
+                },
+                {
+                    x: timestamps,
+                    y: memoryData,
+                    name: 'Memory Usage (%)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#27ae60', width: 2 }
+                }
+            ];
+            
+            if (gpuData.length > 0) {
+                traces.push({
+                    x: gpuTimestamps,
+                    y: gpuData,
+                    name: 'GPU Usage (%)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#e74c3c', width: 2 }
+                });
+            }
+            
+            const layout = {
+                title: '',
+                xaxis: { title: 'Time' },
+                yaxis: { title: 'Usage (%)' },
+                margin: { t: 20, r: 20, b: 40, l: 50 },
+                showlegend: true,
+                legend: { x: 0, y: 1 }
+            };
+            
+            Plotly.newPlot('systemChart', traces, layout, { responsive: true });
+        }
+
+        function updateTrainingChart(data) {
+            const trainData = data.filter(d => d.step >= 0).reverse();
+            if (trainData.length === 0) return;
+            
+            const steps = trainData.map(d => d.step);
+            const losses = trainData.map(d => d.loss);
+            const learningRates = trainData.map(d => d.learning_rate);
+            
+            const traces = [
+                {
+                    x: steps,
+                    y: losses,
+                    name: 'Training Loss',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#9b59b6', width: 2 },
+                    yaxis: 'y'
+                },
+                {
+                    x: steps,
+                    y: learningRates,
+                    name: 'Learning Rate',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#f39c12', width: 2 },
+                    yaxis: 'y2'
+                }
+            ];
+            
+            const layout = {
+                title: '',
+                xaxis: { title: 'Training Step' },
+                yaxis: { title: 'Loss', side: 'left' },
+                yaxis2: {
+                    title: 'Learning Rate',
+                    side: 'right',
+                    overlaying: 'y',
+                    type: 'log'
+                },
+                margin: { t: 20, r: 60, b: 40, l: 50 },
+                showlegend: true,
+                legend: { x: 0, y: 1 }
+            };
+            
+            Plotly.newPlot('trainingChart', traces, layout, { responsive: true });
+        }
+
+        function updateBenchmarkChart(data) {
+            if (data.length === 0) return;
+            
+            // Group by benchmark
+            const benchmarks = {};
+            data.forEach(d => {
+                if (!benchmarks[d.benchmark]) {
+                    benchmarks[d.benchmark] = [];
+                }
+                benchmarks[d.benchmark].push(d);
+            });
+            
+            const traces = [];
+            const colors = ['#3498db', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
+            let colorIndex = 0;
+            
+            Object.keys(benchmarks).forEach(benchmark => {
+                const benchmarkData = benchmarks[benchmark].reverse();
+                const timestamps = benchmarkData.map(d => new Date(d.timestamp * 1000));
+                const scores = benchmarkData.map(d => d.score);
+                
+                traces.push({
+                    x: timestamps,
+                    y: scores,
+                    name: benchmark,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    line: { color: colors[colorIndex % colors.length], width: 2 },
+                    marker: { size: 6 }
+                });
+                
+                colorIndex++;
+            });
+            
+            const layout = {
+                title: '',
+                xaxis: { title: 'Time' },
+                yaxis: { title: 'Score' },
+                margin: { t: 20, r: 20, b: 40, l: 50 },
+                showlegend: true,
+                legend: { x: 0, y: 1 }
+            };
+            
+            Plotly.newPlot('benchmarkChart', traces, layout, { responsive: true });
+        }
+
+        function startAutoRefresh() {
+            const interval = parseInt($('#refreshInterval').val()) * 1000;
+            
+            if (refreshTimer) {
+                clearInterval(refreshTimer);
+            }
+            
+            if (autoRefresh) {
+                refreshTimer = setInterval(refreshData, interval);
+            }
+        }
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const btn = $('#autoRefreshBtn');
+            
+            if (autoRefresh) {
+                btn.text('Pause Auto-Refresh');
+                startAutoRefresh();
+            } else {
+                btn.text('Resume Auto-Refresh');
+                if (refreshTimer) {
+                    clearInterval(refreshTimer);
+                }
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = $('<div class="error-message">').text(message);
+            $('.container').prepend(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        function updateUptime() {
+            const uptime = Math.floor((Date.now() - startTime) / 1000);
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = uptime % 60;
+            
+            $('#uptime').text(`${hours}h ${minutes}m ${seconds}s`);
+        }
+
+        // Update uptime every second
+        setInterval(updateUptime, 1000);
+
+        // Handle control changes
+        $('#timeRange, #refreshInterval').change(function() {
+            if ($(this).attr('id') === 'refreshInterval') {
+                startAutoRefresh();
+            } else {
+                refreshData();
+            }
+        });
+    </script>
+</body>
+</html>

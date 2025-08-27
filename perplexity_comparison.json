@@ -1,0 +1,51 @@
+{
+  "move_results": {
+    "perplexity": 12100.127163341796,
+    "avg_loss": 9.4009712408967,
+    "total_tokens": 1327,
+    "total_batches": 8,
+    "batch_losses": [
+      9.311052389705882,
+      8.739819978412829,
+      9.488691804846939,
+      9.759390287310163,
+      4.435573101043701,
+      4.5033628290349785,
+      9.494889322916666,
+      9.908344778785093
+    ],
+    "std_loss": 2.33143949508667
+  },
+  "baseline_results": {
+    "perplexity": 37837.40136496981,
+    "avg_loss": 10.54105334652036,
+    "total_tokens": 1327,
+    "total_batches": 8,
+    "batch_losses": [
+      10.513137637867647,
+      10.550939459549753,
+      10.551116071428572,
+      10.51661297094042,
+      10.713116645812988,
+      10.377544056285512,
+      10.58976811427696,
+      10.52169783485127
+    ],
+    "std_loss": 0.0930902436375618
+  },
+  "ppl_ratio": 0.319792763954033,
+  "ppl_diff_percent": -68.0207236045967,
+  "within_5_percent": false,
+  "success": false,
+  "evaluation_time": 2.039479970932007,
+  "args": {
+    "model_path": "models/move.pt",
+    "eval_split": "data/owt_1pct_tok",
+    "baseline_model": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "max_steps": 10,
+    "batch_size": 1,
+    "seq_length": 256,
+    "output_file": "perplexity_comparison.json",
+    "device": "auto"
+  }
+}

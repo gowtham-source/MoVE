@@ -1,0 +1,11 @@
+# Virtual environment
+.venv/
+
+# Data
+data/
+
+# Logs
+logs/
+
+# Models
+models/
